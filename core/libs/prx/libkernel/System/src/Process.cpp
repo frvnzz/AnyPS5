@@ -47,7 +47,7 @@ constexpr int sceInvalidArgument = static_cast<int>(0x80020016u);
 constexpr int errnoNoChild = 10;
 constexpr int errnoBadAddress = 14;
 constexpr int errnoInvalidArgument = 22;
-constexpr int freebsdGroupsMax = 1023;
+constexpr std::uint32_t freebsdGroupsMax = 1023;
 std::mutex supplementaryGroupsMutex;
 std::vector<std::uint32_t> supplementaryGroups{0};
 constexpr unsigned freebsdWaitOptions = 0x8000003Fu;
@@ -541,7 +541,7 @@ int APS5_VABI setreuid_nid_postfix(std::uint32_t ruid, std::uint32_t euid) {
 }
 
 int APS5_VABI setgroups_nid_postfix(int count, const std::uint32_t* groups) {
-    if (count < 0 || count > freebsdGroupsMax) {
+    if (static_cast<std::uint32_t>(count) > freebsdGroupsMax + 1) {
         *__error_nid_postfix() = errnoInvalidArgument;
         return -1;
     }
@@ -557,6 +557,7 @@ int APS5_VABI setgroups_nid_postfix(int count, const std::uint32_t* groups) {
         return 0;
     }
     supplementaryGroups.assign(groups, groups + count);
+    std::sort(supplementaryGroups.begin() + 1, supplementaryGroups.end());
     return 0;
 }
 
@@ -564,7 +565,7 @@ int APS5_VABI getgroups_nid_postfix(int capacity, std::uint32_t* groups) {
     std::lock_guard lock(supplementaryGroupsMutex);
     const int count = static_cast<int>(supplementaryGroups.size());
     if (capacity == 0) return count;
-    if (capacity < count) {
+    if (static_cast<std::uint32_t>(capacity) < static_cast<std::uint32_t>(count)) {
         *__error_nid_postfix() = errnoInvalidArgument;
         return -1;
     }
